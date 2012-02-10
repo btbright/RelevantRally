@@ -5,22 +5,26 @@
 <body>
 <header><p><a id="settingsLink" href="#">Settings</a> | Logged in as <span id="userName"></span></p><img src="images/ajax-loader.gif"/></header>
 <div id="settings">
-<input id="backlog" type="checkbox" val="backlog" />
-<label for="backlog">Backlog</label><br />
-<input id="analyzeWIP" type="checkbox" val="analyzeWIP" checked="checked" disabled="disabled" />
-<label for="analyzeWIP">Analyze - WIP</label><br />
-<input id="analyzeComplete" type="checkbox" val="analyzeComplete" checked="checked" disabled="disabled" />
-<label for="analyzeComplete">Analyze - Complete</label><br />
-<input id="devWIP" type="checkbox" val="devWIP" checked="checked" disabled="disabled" />
-<label for="devWIP">Dev - WIP</label><br />
-<input id="devComplete" type="checkbox" val="devComplete" checked="checked" disabled="disabled" />
-<label for="devComplete">Dev - Complete</label><br />
+<label for="ddlWorkspaces">Workspace:</label><br />
+<select id="ddlWorkspaces">
+</select>
+<br />
+<label for="ddlProjects">Project:</label><br />
+<select id="ddlProjects">
+</select>
 </div>
-<h3>User Stories</h3>
-<div id="US">
-</div>
-<h3>Defects</h3>
-<div id="DE">
+
+<div id="mainHolder">
+	<div id="backlogHolder">
+		<input id="backlog" type="checkbox" val="backlog" />
+		<label for="backlog">Backlog</label>
+	</div>
+	<h3>User Stories</h3>
+	<div id="US">
+	</div>
+	<h3>Defects</h3>
+	<div id="DE">
+	</div>
 </div>
 <footer></footer>
 <script src="js/jquery.js"></script>

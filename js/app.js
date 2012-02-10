@@ -5,7 +5,10 @@ $(function(){
 
 
 var RelevantRally = global.RelevantRally = (function(){
-	var currentUser;
+	var currentUser,
+		currentQuery,
+		loadCounter = 0;
+		
 	var appSettings = {
 		localStorageNamespace : "RelevantRally"
 	};
@@ -18,12 +21,21 @@ var RelevantRally = global.RelevantRally = (function(){
 		userStoryLink : "https://rally1.rallydev.com/slm/rally.sp#/%PROJECTID%/detail/userstory/"
 	};
 	
+	var rallyQueries = {
+		default : "((Owner.EmailAddress%20%3D%20**EMAIL**)%20and%20((KanbanState%20contains%20Dev)%20or%20(KanbanState%20contains%20Analyze)))",
+		defaultPlusBacklog : "((Owner.EmailAddress%20%3D%20**EMAIL**)%20and%20(((KanbanState%20contains%20Dev)%20or%20(KanbanState%20contains%20Analyze))%20or%20(ScheduleState%20=%20Backlog)))"
+	};
+	
 	var userSettings = (function(){
 		var localSettings = {};
 		
 		//generic methods
 		var storeSetting = function(settingName,value){
-			localStorage.setItem(appSettings.localStorageNamespace + ":" + settingName,value);
+			localStorage.setItem(appSettings.localStorageNamespace + ":" +currentUser.User.EmailAddress+":" + settingName,value);
+		};
+		
+		var getSettingFromStore = function(settingName){
+			return localSettings[settingName] = localStorage.getItem(appSettings.localStorageNamespace + ":" +currentUser.User.EmailAddress+":" + settingName);
 		};
 		
 		var setSetting = function(settingName,settingValue){
@@ -32,13 +44,12 @@ var RelevantRally = global.RelevantRally = (function(){
 		};
 		
 		var getSetting = function(settingName){
-			return localSettings[settingName] || getSetting(settingName) || false;
+			return localSettings[settingName] || getSettingFromStore(settingName) || false;
 		};
 		
 		
 		//specific methods
 		var setWorkspace = function(workspace){
-			console.log(workspace);
 			setSetting("workspace",workspace);
 		};
 		
@@ -74,34 +85,62 @@ var RelevantRally = global.RelevantRally = (function(){
 	
 	var init = function(){
 		bindEvents();
-		$(global.document).trigger("startLoading");
+		
 		getCurrentUser(function(user){
 			if (!user){
 				openLogin();
 			} else {
-				console.log(user);
 				loadUserSettings(user);
 				setHeader(user);
 				loadRallyData(user);
-				getProjectsForCurrentWorkspace();
 			}
+		});
+	};
+	
+	var bindProjectDropdown = function(){
+		$(global.document).trigger("startLoading");
+		getProjectsForCurrentWorkspace(function(projects){
+			$("#ddlProjects").empty();
+			_.each(projects,function(project){
+				$("#ddlProjects").append("<option value='"+project.id+"'>"+project.name+"</option>");
+			});
+			
+			$("#ddlProjects option[value='"+userSettings.getTopProject()+"']").attr("selected","selected");
+			if (projects.length === 1){$("#ddlProjects").attr("disabled","disabled");}
+			$(global.document).trigger("endLoading");
+		});
+	};
+	
+	var bindWorkspaceDropdown = function(){
+		$(global.document).trigger("startLoading");
+		getWorkspacesForCurrentUser(function(workspaces){
+			$("#ddlWorkspaces").empty();
+			_.each(workspaces,function(workspace){
+				$("#ddlWorkspaces").append("<option value='"+workspace.id+"'>"+workspace.name+"</option>");
+			});
+			
+			$("#ddlWorkspaces option[value='"+userSettings.getWorkspace()+"']").attr("selected","selected");
+			if (workspaces.length === 1){$("#ddlWorkspaces").attr("disabled","disabled");}
+			$(global.document).trigger("endLoading");
 		});
 	};
 	
 	var loadUserSettings = function(user){
 		currentUser = user;
-		userSettings.setWorkspace(user.User.UserProfile.DefaultWorkspace._ref.match(/\/([0-9]*)\.js/)[1]);
-		userSettings.setTopProject(user.User.UserProfile.DefaultProject._ref.match(/\/([0-9]*)\.js/)[1]);
-	};
-	
-	var findProjects = function(){
-		getRallyObj("defect.js?workspace=https://rally1.rallydev.com/slm/webservice/1.29/workspace/"+getWorkspace(),query,callback);
+		if (!userSettings.getWorkspace()){
+			userSettings.setWorkspace(user.User.UserProfile.DefaultWorkspace._ref.match(/\/([0-9]*)\.js/)[1]);
+		}
+		
+		if (!userSettings.getTopProject()){
+			userSettings.setTopProject(user.User.UserProfile.DefaultProject._ref.match(/\/([0-9]*)\.js/)[1]);
+		}
 	};
 	
 	var bindEvents = function(){
 		$(global.document).bind({
 			"startLoading" : startLoading,
-			"endLoading" : endLoading
+			"endLoading" : endLoading,
+			"primaryDataLoadComplete": primaryDataLoadComplete
 		});
 		
 		$("#settingsLink").click(function(){
@@ -109,22 +148,51 @@ var RelevantRally = global.RelevantRally = (function(){
 		});
 		
 		$("#backlog").click(function(){
-			$("#US,#DE").empty();
-			$(global.document).trigger("startLoading");
 			if ($(this).is(":checked")){
-				genericLoadData("((Owner.EmailAddress%20%3D%20"+encodeURI(currentUser.User.EmailAddress)+")%20and%20(((KanbanState%20contains%20Dev)%20or%20(KanbanState%20contains%20Analyze))%20or%20(ScheduleState%20=%20Backlog)))");
+				currentQuery = rallyQueries.defaultPlusBacklog;
+				genericLoadData();
 			} else {
-				genericLoadData("((Owner.EmailAddress%20%3D%20"+encodeURI(currentUser.User.EmailAddress)+")%20and%20((KanbanState%20contains%20Dev)%20or%20(KanbanState%20contains%20Analyze)))");
+				currentQuery = rallyQueries.default;
+				genericLoadData();
 			}
 		});
+		
+		$("#ddlProjects").live("change",function(){
+			var $this = $(this);
+			userSettings.setTopProject($this.val());
+			genericLoadData();
+		});
+		
+		$("#ddlWorkspaces").live("change",function(){
+			var $this = $(this);
+			userSettings.setWorkspace($this.val());
+			genericLoadData();
+		});
+	};
+	
+	var primaryDataLoadComplete = function(){
+		bindProjectDropdown();
+		bindWorkspaceDropdown();
 	};
 
 	var startLoading = function(){
-		$("header").addClass("loading");
+		loadCounter++;
+		handleLoadEvent();
 	};
 	
 	var endLoading = function(){
-		$("header").removeClass("loading");
+		loadCounter--;
+		handleLoadEvent();
+	};
+	
+	var handleLoadEvent = function(){
+		console.log(loadCounter);
+	
+		if (loadCounter > 0 && !$("#header").hasClass("loading")){
+			$("header").addClass("loading");
+		} else if (loadCounter === 0){
+			$("header").removeClass("loading");
+		}
 	};
 	
 	var setHeader = function(user){
@@ -132,33 +200,63 @@ var RelevantRally = global.RelevantRally = (function(){
 	};
 	
 	var loadRallyData = function(user){
-		genericLoadData("((Owner.EmailAddress%20%3D%20"+encodeURI(user.User.EmailAddress)+")%20and%20((KanbanState%20contains%20Dev)%20or%20(KanbanState%20contains%20Analyze)))");
+		currentQuery = rallyQueries.default;
+		genericLoadData();
 	};
 	
-	var genericLoadData = function(query){
+	var genericLoadData = function(){
 		var loaded = 0;
-		getUserStories(query+"&start=1&pagesize=999",function(stories){
-				fillItemData(stories,function(storyArr){
-					_.each(storyArr,function(story){
-						$("#US").append("<p><a target='_blank' href='"+buildUserStoryLink(story.HierarchicalRequirement.ObjectID)+"'>"+story.HierarchicalRequirement.Name+"</a></p>");
-					});
+		$("#US,#DE").empty();
+		$(global.document).trigger("startLoading");
+		
+		getUserStories(currentQuery+"&start=1&pagesize=999",function(stories){
+				if (stories.QueryResult.Results.length === 0){
+					$("#US").append("<p class='empty'>No user stories...</p>");
+					
+					$(global.document).trigger("endLoading");
 					loaded++;
 					if (loaded === 2){
+						$(global.document).trigger("primaryDataLoadComplete");
+					}
+				} else {
+					fillItemData(stories,function(storyArr){
+					
+						_.each(storyArr,function(story){
+							$("#US").append("<p><a target='_blank' href='"+buildUserStoryLink(story.HierarchicalRequirement.ObjectID)+"'>"+story.HierarchicalRequirement.Name+"</a></p>");
+						});
+						
 						$(global.document).trigger("endLoading");
+						loaded++;
+						if (loaded === 2){
+							$(global.document).trigger("primaryDataLoadComplete");
+						}
+					});
+				}
+		});
+		
+		$(global.document).trigger("startLoading");
+		getDefects(currentQuery+"&start=1&pagesize=999",function(defects){
+			if (defects.QueryResult.Results.length === 0){
+				$("#DE").append("<p class='empty'>No defects...</p>");
+				loaded++;
+				
+				$(global.document).trigger("endLoading");
+				if (loaded === 2){
+					$(global.document).trigger("primaryDataLoadComplete");
+				}
+			} else {
+				fillItemData(defects,function(defectArr){
+						_.each(defectArr,function(defect){
+							$("#DE").append("<p><a target='_blank' href='"+buildDefectLink(defect.Defect.ObjectID)+"'>"+defect.Defect.Name+"</a></p>");
+						});
+					
+					$(global.document).trigger("endLoading");
+					loaded++;
+					if (loaded === 2){
+						$(global.document).trigger("primaryDataLoadComplete");
 					}
 				});
-		});
-				
-		getDefects(query+"&start=1&pagesize=999",function(defects){
-			fillItemData(defects,function(defectArr){
-				_.each(defectArr,function(defect){
-					$("#DE").append("<p><a target='_blank' href='"+buildDefectLink(defect.Defect.ObjectID)+"'>"+defect.Defect.Name+"</a></p>");
-				});
-				loaded++;
-				if (loaded === 2){
-					$(global.document).trigger("endLoading");
-				}
-			});
+			}
 		});
 	};
 	
@@ -168,7 +266,7 @@ var RelevantRally = global.RelevantRally = (function(){
 	
 	
 	var getRallyObj = function(reqPath,query,callback){
-		$.getJSON(rallySettings.baseURL+reqPath+"&query="+query+"&"+rallySettings.jsonParam,callback);
+		$.getJSON(rallySettings.baseURL+reqPath+"&query="+query.replace("**EMAIL**",encodeURI(currentUser.User.EmailAddress))+"&"+rallySettings.jsonParam,callback);
 	};
 	
 	var fillItemData = function(items,callback){
@@ -227,15 +325,29 @@ var RelevantRally = global.RelevantRally = (function(){
 			},
 			error : function(){callback(false);}
 		});
+	};
 	
+	var getWorkspacesForCurrentUser = function(callback){
+		$.jsonp({
+			callbackParameter: "jsonp",
+			url : "https://rally1.rallydev.com/slm/webservice/1.29/workspace.js?query=&fetch=ObjectID&start=1&pagesize=200",
+			success : function(result){
+				var workspaces = [];
+				_.each(result.QueryResult.Results,function(workspace){
+					workspaces.push({name:workspace._refObjectName,id:workspace.ObjectID});
+				});
+				callback(workspaces);
+			},
+			error : function(){callback(false);}
+		});
 	};
 	
 	var getUserStories = function(query,callback){
-		getRallyObj("hierarchicalrequirement.js?workspace=https://rally1.rallydev.com/slm/webservice/1.29/workspace/"+getWorkspace(),query,callback);
+		getRallyObj("hierarchicalrequirement.js?workspace=https://rally1.rallydev.com/slm/webservice/1.29/workspace/"+getWorkspace()+"&project=https://rally1.rallydev.com/slm/webservice/1.29/project/"+userSettings.getTopProject(),query,callback);
 	};
 	
 	var getDefects = function(query,callback){
-		getRallyObj("defect.js?workspace=https://rally1.rallydev.com/slm/webservice/1.29/workspace/"+getWorkspace(),query,callback);
+		getRallyObj("defect.js?workspace=https://rally1.rallydev.com/slm/webservice/1.29/workspace/"+getWorkspace()+"&project=https://rally1.rallydev.com/slm/webservice/1.29/project/"+userSettings.getTopProject(),query,callback);
 	};
 	
 	var buildUserStoryLink = function(objectID){

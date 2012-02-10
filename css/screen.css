@@ -3,9 +3,13 @@ header img {display:none;position:absolute;right:3px;}
 header.loading img {display:block;}
 header p,header p a,label {font-size:12px;color:#ccc;}
 label {color:#888;position:relative;bottom:2px;}
-#settings {display:none;border-top:1px solid #ccc;border-bottom:1px solid #ccc;}
-
-a {color:#0B6BA1;text-decoration:none;font-size:14px;}
+#settings {display:none;border-top:1px solid #ccc;border-bottom:1px solid #ccc;padding:4px 0;}
+#ddlWorkspaces {margin-bottom:8px;}
+#backlogHolder {position:absolute;top:0px;right:20px;}
+#mainHolder {position:relative;}
+p {margin:8px 0;}
+a {color:#0B6BA1;text-decoration:none;font-size:12px;}
 a:hover {color:#4799BB;}
 #userName {font-weight:bold;}
-h3 {font-size:16px;color:#0B75A1;border-bottom:1px solid #ccc;}
+h3 {font-size:16px;color:#0B75A1;border-bottom:1px solid #ccc;margin-bottom:10px;}
+.empty {color:#bbb;}
