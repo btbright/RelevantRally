@@ -1,0 +1,10 @@
+<script>
+var listener = chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+			console.log(tabId,changeInfo,tab);
+			if (changeInfo.status === "loading" && changeInfo.url && changeInfo.url.slice(0,81) === "https://rally1.rallydev.com/slm/webservice/1.29/user.js?fetch=emailaddress&jsonp="){
+				chrome.tabs.update(tabId,{
+					url:"proceed.html"
+				});
+			}
+		});
+</script>

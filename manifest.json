@@ -1,0 +1,20 @@
+{
+	"name": "Relevant Rally",
+	"version": "0.1",
+	"description": "Shows you user stories and defects relevant to you.",
+	"icons": { 
+			"16": "images/icon-16.png",
+			"128": "images/icon-128.png" 
+	},
+	"browser_action": {
+		"default_icon": "images/icon-19.png",
+		"default_title": "Relevant Rally",
+		"default_popup": "popup.html"
+	},
+	"background_page": "background.html",
+	"permissions": [
+		"tabs",
+		"contentSettings",
+		"https://rally1.rallydev.com"
+	]
+}
