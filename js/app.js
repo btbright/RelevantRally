@@ -127,12 +127,30 @@ var RelevantRally = global.RelevantRally = (function(){
 	
 	var loadUserSettings = function(user){
 		currentUser = user;
+		
 		if (!userSettings.getWorkspace()){
-			userSettings.setWorkspace(user.User.UserProfile.DefaultWorkspace._ref.match(/\/([0-9]*)\.js/)[1]);
+			if (user.User.UserProfile.DefaultWorkspace){
+				userSettings.setWorkspace(user.User.UserProfile.DefaultWorkspace._ref.match(/\/([0-9]*)\.js/)[1]);
+			} else {
+				getWorkspacesForCurrentUser(function(workspaces){
+					if (workspaces.length > 0){
+						userSettings.setWorkspace(workspaces[0].id);
+					}
+				});
+			}	
 		}
 		
+		console.log(user.User.UserProfile.DefaultProject);
 		if (!userSettings.getTopProject()){
-			userSettings.setTopProject(user.User.UserProfile.DefaultProject._ref.match(/\/([0-9]*)\.js/)[1]);
+			if (user.User.UserProfile.DefaultProject){
+				userSettings.setTopProject(user.User.UserProfile.DefaultProject._ref.match(/\/([0-9]*)\.js/)[1]);
+			} else {
+				getProjectsForCurrentWorkspace(function(projects){
+					if (projects.length > 0){
+						userSettings.setTopProject(projects[0].id);
+					}
+				});
+			}
 		}
 	};
 	
