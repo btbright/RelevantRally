@@ -3,7 +3,7 @@ header img {display:none;position:absolute;right:3px;}
 header.loading img {display:block;}
 header p,header p a,label {font-size:12px;color:#ccc;}
 label {color:#888;position:relative;bottom:2px;}
-#settings {display:none;border-top:1px solid #ccc;border-bottom:1px solid #ccc;padding:4px 0;}
+#settings {display:none;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:4px 0;}
 #ddlWorkspaces {margin-bottom:8px;}
 #backlogHolder {position:absolute;top:0px;right:20px;}
 #mainHolder {position:relative;}
